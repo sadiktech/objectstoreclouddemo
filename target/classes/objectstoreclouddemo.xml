@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:mulexml="http://www.mulesoft.org/schema/mule/xml" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:objectstore="http://www.mulesoft.org/schema/mule/objectstore" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/objectstore http://www.mulesoft.org/schema/mule/objectstore/current/mule-objectstore.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
+http://www.mulesoft.org/schema/mule/xml http://www.mulesoft.org/schema/mule/xml/current/mule-xml.xsd">
+    <objectstore:config name="ObjectStore__Connector" objectStore-ref="_defaultUserObjectStore" doc:name="ObjectStore: Connector"/>
+    <http:listener-config name="HTTP_Listener_Configuration" host="0.0.0.0" port="8081" doc:name="HTTP Listener Configuration"/>
+    <flow name="storeinObjectStore">
+        <objectstore:store config-ref="ObjectStore__Connector" key="#[flowVars.localVariableName]" value-ref="#[flowVars.localVariableValue]" doc:name="ObjectStore"/>
+    </flow>
+    <flow name="objectStorePostRequest">
+        <http:listener config-ref="HTTP_Listener_Configuration" path="/ObjectStore" doc:name="HTTP" allowedMethods="POST"/>
+        <object-to-string-transformer returnClass="java.lang.String" doc:name="Object to String"/>
+        <set-variable variableName="localVariableName" value="#[xpath('/Employee/Name/text()').text]" doc:name="localVariableName"/>
+        <set-variable variableName="localVariableValue" value="#[payload]" doc:name="localVariableValue"/>
+        <flow-ref name="storeinObjectStore" doc:name="storeinObjectStore"/>
+        <logger level="INFO" doc:name="Logger"/>
+        <set-payload value="#[flowVars.localVariableName] and #[payload]  Added successfully in ObjectStore !!" doc:name="Set Payload"/>
+    </flow>
+    <flow name="objectStoreGetRequest">
+        <http:listener config-ref="HTTP_Listener_Configuration" path="/retrieve" allowedMethods="POST" doc:name="HTTP"/>
+        <set-variable variableName="key" value="#[xpath('/Employee/Name/text()').text]" doc:name="Variable"/>
+        <flow-ref name="retrieveData" doc:name="retrieveData"/>
+        <set-payload value="#[flowVars.targetValue]" doc:name="Set Payload"/>
+    </flow>
+    <flow name="retrieveData">
+        <objectstore:retrieve config-ref="ObjectStore__Connector" key="#[flowVars.key]" defaultValue-ref="#['none']" targetProperty="targetValue" doc:name="ObjectStore"/>
+        <object-to-string-transformer returnClass="java.lang.String" doc:name="Object to String"/>
+    </flow>
+    <flow name="ObjectStoreUpdateflow">
+        <http:listener config-ref="HTTP_Listener_Configuration" path="/updateObjectStore" allowedMethods="PUT" doc:name="HTTP"/>
+        <set-variable variableName="localVariableName" value="#[xpath3('/Employee/Name/text()').text]" doc:name="localVariableName"/>
+        <set-variable variableName="localVariableValue" value="#[payload]" doc:name="localVariableValue"/>
+        <objectstore:retrieve-and-store config-ref="ObjectStore__Connector" key="#[flowVars.localVariableName]" defaultValue-ref="#[flowVars.localVariableValue]" storeValue-ref="#[flowVars.localVariableValue]" targetProperty="OldLocalVariableValue" doc:name="ObjectStore"/>
+        <set-payload value="Update Successful!!" doc:name="Set Payload"/>
+    </flow>
+    <flow name="deleteKeyFromObjectStore">
+        <http:listener config-ref="HTTP_Listener_Configuration" path="/deleteobjectkey/{key}" allowedMethods="delete" doc:name="HTTP"/>
+        <set-variable variableName="key" value="#[xpath('/Employee/Name/text()').text]" doc:name="Variable"/>
+        <objectstore:remove config-ref="ObjectStore__Connector" key="#[flowVars.key]" doc:name="ObjectStore"/>
+        <set-payload value="#[flowVars.key] removed successfully fromn Object Store !!" doc:name="Set Payload"/>
+    </flow>
+    
+    
+</mule>
